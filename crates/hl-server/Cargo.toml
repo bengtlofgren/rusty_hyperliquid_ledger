@@ -1,0 +1,21 @@
+[package]
+name = "hl-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Main binary for Hyperliquid Trade Ledger service"
+
+[[bin]]
+name = "hl-server"
+path = "src/main.rs"
+
+[dependencies]
+hl-types = { path = "../hl-types" }
+hl-ingestion = { path = "../hl-ingestion" }
+hl-indexer = { path = "../hl-indexer" }
+hl-api = { path = "../hl-api" }
+
+tokio.workspace = true
+dotenvy.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

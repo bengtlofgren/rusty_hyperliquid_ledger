@@ -1,0 +1,20 @@
+[package]
+name = "hl-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "HTTP API layer for trade ledger service"
+
+[dependencies]
+hl-types = { path = "../hl-types" }
+hl-ingestion = { path = "../hl-ingestion" }
+hl-indexer = { path = "../hl-indexer" }
+
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

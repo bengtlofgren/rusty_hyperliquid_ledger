@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/hl-types",
+    "crates/hl-ingestion",
+    "crates/hl-indexer",
+    "crates/hl-api",
+    "crates/hl-server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Numeric types
+rust_decimal = { version = "1", features = ["serde"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging/tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Hyperliquid SDK (uses impl Future pattern for zero-cost async)
+hypersdk = "0.1"
+
+# HTTP client (kept for potential direct use, but hypersdk handles most)
+reqwest = { version = "0.12", features = ["json"] }
+
+# Web framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Environment
+dotenvy = "0.15"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }

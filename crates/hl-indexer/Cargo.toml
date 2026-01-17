@@ -1,0 +1,19 @@
+[package]
+name = "hl-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Business logic and data transformation for trade ledger"
+
+[dependencies]
+hl-types = { path = "../hl-types" }
+hl-ingestion = { path = "../hl-ingestion" }
+
+# Core dependencies
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+rust_decimal.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+chrono.workspace = true
