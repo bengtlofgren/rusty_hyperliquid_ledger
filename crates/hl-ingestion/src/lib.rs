@@ -54,13 +54,42 @@
 //! }
 //! ```
 //!
+//! ## Pagination
+//!
+//! When `from_ms` is provided to [`get_user_fills`], we use the `userFillsByTime`
+//! API which supports pagination up to 10,000 fills. Without time parameters,
+//! we fall back to hypersdk's simpler `userFills` endpoint (max 500 fills).
+//!
+//! ## Real-Time Fill Collection (WebSocket)
+//!
+//! To bypass the 10,000 fill limit, use [`FillCollector`] to capture fills
+//! in real-time via WebSocket. Start the collector before a competition
+//! begins to capture all fills as they happen:
+//!
+//! ```rust,ignore
+//! use hl_ingestion::{FillCollector, Network};
+//!
+//! // Create and start collector before competition
+//! let collector = FillCollector::new(Network::Mainnet);
+//! let handle = collector.start("0x...").await?;
+//!
+//! // ... competition runs ...
+//!
+//! // Get all collected fills (no 10k limit!)
+//! let fills = collector.get_fills().await;
+//! handle.stop().await;
+//! ```
+//!
 //! ## Known Limitations
 //!
-//! ### Pagination
+//! ### Fill Limit (Historical API)
 //!
-//! The Hyperliquid API returns max 500 fills per request. Currently,
-//! hypersdk does not expose pagination parameters, so [`get_user_fills`]
-//! may only return the most recent 500 fills for active traders.
+//! The Hyperliquid API limits `userFillsByTime` to 10,000 fills maximum,
+//! even with pagination. For users with more historical fills, only the
+//! most recent 10,000 within the time window will be returned.
+//!
+//! **Workaround**: Use [`FillCollector`] to capture fills in real-time via
+//! WebSocket, which has no fill limit.
 //!
 //! ### Builder Attribution
 //!
@@ -68,16 +97,19 @@
 //! The [`Fill`] struct lacks a `builder` field. Builder-only filtering
 //! will require an alternative data source in the future.
 
+mod api_client;
 pub mod config;
 pub mod error;
 mod hyperliquid;
 mod mock;
+mod ws_collector;
 
 // Re-export our types
 pub use config::Network;
 pub use error::IngestionError;
 pub use hyperliquid::HyperliquidSource;
 pub use mock::MockSource;
+pub use ws_collector::{CollectorHandle, FillCollector};
 
 // Re-export hypersdk types that appear in our public API.
 // This allows downstream crates to use these types without adding

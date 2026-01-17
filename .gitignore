@@ -1,6 +1,12 @@
+# rust binaries
 /target
 
+# Collected data
+/data
+
+# Claude
 .claude/
 *PLAN.md
 
+# Config
 .env

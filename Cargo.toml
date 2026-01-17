@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/hl-types",
     "crates/hl-ingestion",
+    "crates/hl-builder-data",
     "crates/hl-indexer",
     "crates/hl-api",
     "crates/hl-server",

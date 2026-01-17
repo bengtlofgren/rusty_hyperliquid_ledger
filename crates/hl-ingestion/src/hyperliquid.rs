@@ -21,14 +21,11 @@
 //!
 //! # Pagination
 //!
-//! The underlying Hyperliquid API returns max 500 fills per request.
-//! Currently, hypersdk's `user_fills` method does not expose pagination parameters.
-//! This means we may only get the most recent 500 fills.
-//!
-//! TODO: Investigate if hypersdk supports pagination, or if we need to use
-//! the raw API for historical data beyond 500 fills.
+//! When time parameters are provided, we use the direct API client with
+//! `userFillsByTime` which supports pagination up to 10,000 fills.
+//! Without time parameters, we fall back to hypersdk's `userFills` (max 500).
 
-use crate::{config::Network, error::IngestionError, DataSource};
+use crate::{api_client::ApiClient, config::Network, error::IngestionError, DataSource};
 use hypersdk::hypercore::types::{ClearinghouseState, Fill, UserBalance};
 
 /// Production data source for Hyperliquid using hypersdk.
@@ -50,6 +47,8 @@ pub struct HyperliquidSource {
     /// The underlying hypersdk HTTP client.
     /// hypersdk manages connection pooling and HTTP details internally.
     client: hypersdk::hypercore::http::Client,
+    /// Direct API client for endpoints not exposed by hypersdk (e.g., userFillsByTime).
+    api_client: ApiClient,
 }
 
 impl HyperliquidSource {
@@ -61,11 +60,11 @@ impl HyperliquidSource {
     /// the first API call. The client uses HTTP/2 with connection pooling
     /// for efficient request handling.
     pub fn new(network: Network) -> Self {
-        let client = match network {
-            Network::Mainnet => hypersdk::hypercore::mainnet(),
-            Network::Testnet => hypersdk::hypercore::testnet(),
+        let (client, api_client) = match network {
+            Network::Mainnet => (hypersdk::hypercore::mainnet(), ApiClient::mainnet()),
+            Network::Testnet => (hypersdk::hypercore::testnet(), ApiClient::testnet()),
         };
-        Self { client }
+        Self { client, api_client }
     }
 
     /// Create a source connected to Hyperliquid mainnet.
@@ -102,15 +101,9 @@ impl DataSource for HyperliquidSource {
     ///
     /// # Time Window Filtering
     ///
-    /// The `from_ms` and `to_ms` parameters filter the results to a specific
-    /// time window. Currently, this filtering happens client-side after
-    /// receiving the data from hypersdk.
-    ///
-    /// # Pagination Limitation
-    ///
-    /// The underlying API returns max 500 fills. If a user has more fills
-    /// in the requested time window, only the most recent 500 will be returned.
-    /// This is a known limitation that may be addressed in a future version.
+    /// When `from_ms` is provided, we use the `userFillsByTime` API endpoint
+    /// which supports pagination up to 10,000 fills. Without time parameters,
+    /// we fall back to hypersdk's `userFills` (max 500 fills).
     ///
     /// # Returns
     ///
@@ -124,21 +117,28 @@ impl DataSource for HyperliquidSource {
     ) -> Result<Vec<Fill>, IngestionError> {
         let address = Self::parse_address(user)?;
 
-        // Fetch fills from hypersdk.
-        // Note: This may only return the most recent 500 fills due to API limits.
+        // If time parameters are provided, use the paginated userFillsByTime API
+        // which can return up to 10,000 fills.
+        if let Some(start_time) = from_ms {
+            let fills = self
+                .api_client
+                .user_fills_by_time(address, start_time, to_ms, false)
+                .await?;
+            return Ok(fills);
+        }
+
+        // No time params: fall back to hypersdk's userFills (simpler, max 500 fills).
         let all_fills = self.client.user_fills(address).await?;
 
-        // Filter by time window if specified.
-        // We do this client-side since hypersdk doesn't expose time params.
-        let filtered: Vec<Fill> = all_fills
-            .into_iter()
-            .filter(|fill| {
-                let t = fill.time as i64;
-                let after_from = from_ms.map_or(true, |from| t >= from);
-                let before_to = to_ms.map_or(true, |to| t <= to);
-                after_from && before_to
-            })
-            .collect();
+        // Filter by to_ms if specified (from_ms is None here).
+        let filtered: Vec<Fill> = if let Some(to) = to_ms {
+            all_fills
+                .into_iter()
+                .filter(|fill| (fill.time as i64) <= to)
+                .collect()
+        } else {
+            all_fills
+        };
 
         Ok(filtered)
     }

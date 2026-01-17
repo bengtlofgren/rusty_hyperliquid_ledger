@@ -36,6 +36,14 @@ pub enum IngestionError {
     /// No data available (e.g., mock not configured).
     #[error("no data: {0}")]
     NoData(String),
+
+    /// Invalid input (e.g., bad parameters).
+    #[error("invalid input: {0}")]
+    InvalidInput(String),
+
+    /// WebSocket connection error.
+    #[error("websocket error: {0}")]
+    WebSocket(String),
 }
 
 // Convert from anyhow::Error (what hypersdk returns) to our error type.
@@ -46,5 +54,13 @@ impl From<anyhow::Error> for IngestionError {
     fn from(err: anyhow::Error) -> Self {
         // Use Display formatting to get the full error chain as a string
         IngestionError::Network(format!("{:#}", err))
+    }
+}
+
+// Convert from reqwest::Error (direct API calls) to our error type.
+impl From<reqwest::Error> for IngestionError {
+    #[inline]
+    fn from(err: reqwest::Error) -> Self {
+        IngestionError::Network(err.to_string())
     }
 }

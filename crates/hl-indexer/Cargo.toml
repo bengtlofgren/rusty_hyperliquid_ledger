@@ -5,9 +5,16 @@ edition.workspace = true
 license.workspace = true
 description = "Business logic and data transformation for trade ledger"
 
+[features]
+default = []
+# Enable builder data enrichment (downloads daily LZ4 files)
+builder-enrichment = ["dep:hl-builder-data"]
+
 [dependencies]
+# Internal crates
 hl-types = { path = "../hl-types" }
 hl-ingestion = { path = "../hl-ingestion" }
+hl-builder-data = { path = "../hl-builder-data", optional = true }
 
 # Core dependencies
 serde.workspace = true
@@ -17,3 +24,7 @@ rust_decimal.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 chrono.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+rust_decimal_macros = "1"
