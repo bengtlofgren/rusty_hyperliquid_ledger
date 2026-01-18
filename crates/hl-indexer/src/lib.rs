@@ -73,6 +73,8 @@
 mod converter;
 mod error;
 mod indexer;
+pub mod leaderboard;
+pub mod taint;
 
 pub use converter::{convert_fill, convert_fills};
 pub use error::IndexerError;

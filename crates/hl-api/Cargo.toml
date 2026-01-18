@@ -8,9 +8,11 @@ description = "HTTP API layer for trade ledger service"
 [dependencies]
 hl-types = { path = "../hl-types" }
 hl-ingestion = { path = "../hl-ingestion" }
-hl-indexer = { path = "../hl-indexer" }
+hl-indexer = { path = "../hl-indexer", features = ["builder-enrichment"] }
+hl-builder-data = { path = "../hl-builder-data" }
 
 serde.workspace = true
+chrono.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 rust_decimal.workspace = true

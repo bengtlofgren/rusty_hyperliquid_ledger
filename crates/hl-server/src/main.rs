@@ -2,7 +2,7 @@
 //!
 //! This binary wires together all crates and starts the HTTP server.
 
-use hl_api::{create_router, AppState};
+use hl_api::{create_router, AppState, CompetitionConfig};
 use hl_indexer::{FillSource, Indexer, IndexerConfig, Network};
 use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -45,6 +45,9 @@ async fn main() -> anyhow::Result<()> {
         _ => FillSource::Api,
     };
 
+    // Load competition configuration
+    let competition_config = CompetitionConfig::from_env();
+
     tracing::info!(
         "Starting hl-server on {}:{} (network: {:?}, fill_source: {:?})",
         host,
@@ -52,6 +55,22 @@ async fn main() -> anyhow::Result<()> {
         network,
         fill_source
     );
+
+    // Log competition configuration
+    if competition_config.is_configured() {
+        tracing::info!(
+            "Competition configured with {} users",
+            competition_config.user_count()
+        );
+        if let Some(ref builder) = competition_config.target_builder {
+            tracing::info!("Target builder: {}", builder);
+        }
+        if competition_config.builder_only {
+            tracing::info!("Builder-only mode: ENABLED");
+        }
+    } else {
+        tracing::info!("Competition not configured (set COMPETITION_USERS to enable leaderboard)");
+    }
 
     // Create indexer with configured fill source
     let config = match network {
@@ -62,8 +81,8 @@ async fn main() -> anyhow::Result<()> {
 
     let indexer = Indexer::new(config);
 
-    // Create app state
-    let state = Arc::new(AppState::new(indexer));
+    // Create app state with competition config
+    let state = Arc::new(AppState::with_config(indexer, competition_config));
 
     // Create router
     let app = create_router(state);
@@ -74,9 +93,10 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Server listening on http://{}", addr);
     tracing::info!("Endpoints:");
-    tracing::info!("  GET /health       - Health check");
-    tracing::info!("  GET /v1/trades    - Fetch user trades");
-    tracing::info!("  GET /v1/pnl       - Calculate user PnL");
+    tracing::info!("  GET /health         - Health check");
+    tracing::info!("  GET /v1/trades      - Fetch user trades");
+    tracing::info!("  GET /v1/pnl         - Calculate user PnL");
+    tracing::info!("  GET /v1/leaderboard - Get competition leaderboard");
 
     axum::serve(listener, app).await?;
 

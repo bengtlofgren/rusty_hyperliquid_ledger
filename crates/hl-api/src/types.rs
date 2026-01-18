@@ -1,5 +1,6 @@
 //! API request and response types.
 
+use hl_indexer::leaderboard::LeaderboardMetric;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -148,4 +149,101 @@ pub struct HealthResponse {
     pub status: String,
     /// Service version.
     pub version: String,
+}
+
+/// Query parameters for the leaderboard endpoint.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardQuery {
+    /// Filter by coin/asset symbol (e.g., "BTC", "ETH").
+    pub coin: Option<String>,
+    /// Start time in milliseconds since epoch.
+    pub from_ms: Option<i64>,
+    /// End time in milliseconds since epoch.
+    pub to_ms: Option<i64>,
+    /// Metric to rank by: "volume", "pnl", or "returnPct".
+    #[serde(default = "default_metric")]
+    pub metric: String,
+    /// Filter to only show users who used the builder.
+    #[serde(default)]
+    pub builder_only: bool,
+    /// Maximum start capital for return percentage calculation.
+    pub max_start_capital: Option<Decimal>,
+}
+
+fn default_metric() -> String {
+    "volume".to_string()
+}
+
+impl LeaderboardQuery {
+    /// Parse the metric string to LeaderboardMetric.
+    pub fn parse_metric(&self) -> Option<LeaderboardMetric> {
+        LeaderboardMetric::from_str(&self.metric)
+    }
+}
+
+/// A single entry in the leaderboard.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardEntryResponse {
+    /// Rank (1-indexed).
+    pub rank: usize,
+    /// User address.
+    pub user: String,
+    /// Value of the ranking metric.
+    pub metric_value: Decimal,
+    /// Total trading volume.
+    pub volume: Decimal,
+    /// Realized PnL.
+    pub realized_pnl: Decimal,
+    /// Return percentage (if applicable).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub return_pct: Option<Decimal>,
+    /// Number of trades.
+    pub trade_count: usize,
+    /// Number of fills that went through the builder.
+    pub builder_fill_count: usize,
+    /// Whether the user is tainted (has non-builder fills during open positions).
+    pub tainted: bool,
+}
+
+impl From<hl_indexer::leaderboard::LeaderboardEntry> for LeaderboardEntryResponse {
+    fn from(entry: hl_indexer::leaderboard::LeaderboardEntry) -> Self {
+        Self {
+            rank: entry.rank,
+            user: entry.user,
+            metric_value: entry.metric_value,
+            volume: entry.volume,
+            realized_pnl: entry.realized_pnl,
+            return_pct: entry.return_pct,
+            trade_count: entry.trade_count,
+            builder_fill_count: entry.builder_fill_count,
+            tainted: entry.tainted,
+        }
+    }
+}
+
+/// Leaderboard response.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardResponse {
+    /// Leaderboard entries.
+    pub entries: Vec<LeaderboardEntryResponse>,
+    /// Metric used for ranking.
+    pub metric: String,
+    /// Time range start (if specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_ms: Option<i64>,
+    /// Time range end (if specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to_ms: Option<i64>,
+    /// Coin filter (if specified).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coin: Option<String>,
+    /// Whether builder-only mode is enabled.
+    pub builder_only: bool,
+    /// Total number of users in the competition.
+    pub total_users: usize,
+    /// Number of users after taint filtering (if builder_only).
+    pub filtered_users: usize,
 }

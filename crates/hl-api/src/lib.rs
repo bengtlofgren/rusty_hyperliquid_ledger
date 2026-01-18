@@ -5,6 +5,7 @@
 //! - `GET /health` - Health check
 //! - `GET /v1/trades` - Fetch user trades/fills
 //! - `GET /v1/pnl` - Calculate PnL for a user
+//! - `GET /v1/leaderboard` - Get competition leaderboard
 //!
 //! # Example
 //!
@@ -30,7 +31,7 @@ mod state;
 mod types;
 
 pub use error::ApiError;
-pub use state::AppState;
+pub use state::{AppState, CompetitionConfig};
 pub use types::*;
 
 use axum::{
@@ -48,6 +49,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // V1 API routes
         .route("/v1/trades", get(handlers::get_trades))
         .route("/v1/pnl", get(handlers::get_pnl))
+        .route("/v1/leaderboard", get(handlers::get_leaderboard))
         // Add state and middleware
         .with_state(state)
         .layer(TraceLayer::new_for_http())

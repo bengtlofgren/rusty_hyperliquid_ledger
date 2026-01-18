@@ -2492,6 +2492,8 @@ name = "hl-api"
 version = "0.1.0"
 dependencies = [
  "axum 0.7.9",
+ "chrono",
+ "hl-builder-data",
  "hl-indexer",
  "hl-ingestion",
  "hl-types",
@@ -2527,6 +2529,7 @@ name = "hl-indexer"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "futures",
  "hl-builder-data",
  "hl-ingestion",
  "hl-types",

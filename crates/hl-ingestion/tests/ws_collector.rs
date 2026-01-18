@@ -1,64 +1,53 @@
-//! Example: Real-time fill collection via WebSocket.
+//! Integration test for real-time fill collection via WebSocket.
 //!
-//! This example demonstrates how to use the FillCollector to capture fills
+//! This test demonstrates how to use the FillCollector to capture fills
 //! in real-time, bypassing the 10,000 fill limit of the historical API.
 //!
-//! Usage:
-//!   cargo run -p hl-ingestion --example ws_collector -- <user_address>
-//!
-//! The collector will run for 60 seconds, printing fill counts periodically.
+//! Run with: cargo test -p hl-ingestion --test ws_collector -- --ignored --nocapture
 
-use hl_ingestion::{FillCollector, Network};
-use std::env;
+use hl_ingestion::{FillCollector, Network, Side};
 use std::time::Duration;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+// A test address - replace with an active address for meaningful results
+const TEST_ADDRESS: &str = "0x1234567890abcdef1234567890abcdef12345678";
+
+#[tokio::test]
+#[ignore] // Requires network access and runs for extended duration
+async fn test_websocket_fill_collector() {
     // Initialize tracing for debug output
-    tracing_subscriber::fmt()
+    let _ = tracing_subscriber::fmt()
         .with_env_filter("hl_ingestion=debug,info")
-        .init();
+        .try_init();
 
-    // Get user address from command line
-    let args: Vec<String> = env::args().collect();
-    let user = args
-        .get(1)
-        .map(|s| s.as_str())
-        .unwrap_or("0x1234567890abcdef1234567890abcdef12345678");
-
-    println!("Starting fill collector for user: {}", user);
+    println!("Starting fill collector for user: {}", TEST_ADDRESS);
     println!("Network: Mainnet");
-    println!("Duration: 60 seconds");
+    println!("Duration: 30 seconds");
     println!();
 
     // Create collector
     let collector = FillCollector::new(Network::Mainnet);
 
     // Start collecting
-    let handle = collector.start(user).await?;
+    let handle = collector.start(TEST_ADDRESS).await.expect("Failed to start collector");
 
     println!("Collector started! Waiting for fills...");
     println!();
 
-    // Monitor for 60 seconds
-    for i in 1..=12 {
+    // Monitor for 30 seconds (shorter than example for test purposes)
+    for i in 1..=6 {
         tokio::time::sleep(Duration::from_secs(5)).await;
 
         let count = collector.fill_count().await;
-        println!(
-            "[{:2}s] Fills collected: {}",
-            i * 5,
-            count
-        );
+        println!("[{:2}s] Fills collected: {}", i * 5, count);
 
         // Show some fill details if we have any
-        if count > 0 && i % 4 == 0 {
+        if count > 0 && i % 2 == 0 {
             let fills = collector.get_fills().await;
             if let Some(last) = fills.last() {
                 println!(
                     "       Latest: {} {} {} @ {} (PnL: {})",
                     last.coin,
-                    if last.side == hl_ingestion::Side::Bid { "BUY" } else { "SELL" },
+                    if last.side == Side::Bid { "BUY" } else { "SELL" },
                     last.sz,
                     last.px,
                     last.closed_pnl
@@ -96,6 +85,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Last fill:  {} ms", last.time);
         }
     }
-
-    Ok(())
 }
